@@ -1,80 +1,121 @@
-#define LED_NUMBER 3
-#define FIRST_LED 1
-#define FIRST_BUTTON 11
-#define BUZZER 8
-#define DEBUG false
+#define LED_EASY 0
+#define LED_MEDIUM 1
+#define LED_HARD 2
+#define BTN_DIFFICULTY 3
+#define BTN_GAME 4
+#define BUZZER 5
+#define LED_1 6
+#define BTN_1 7
+#define LED_2 8
+#define BTN_2 9
+#define LED_3 10
+#define BTN_3 11
+#define LED_4 12
+#define BTN_4 13
+#define LENGTH_EASY 5
+#define LENGTH_MEDIUM 10
+#define LENGTH_HARD 15
 
-void setupElement(int number, int offset, int type) {
-  for (int i = 0; i < number; i++) {
-    pinMode(i+offset, type);
-  }
-}
+enum GameState {
+	configure,
+	calculate,
+	play
+} game = configure;
+
+enum DifficultyState {
+	easy,
+  	medium,
+  	hard
+} difficulty = easy;
+
+enum DifficultyButtonState {
+	offPressed,
+  	onPressed,
+  	changingDifficulty
+} difficultyButton = changingDifficulty;
+
+int length;
 
 void setup()
 {
-  if (DEBUG) {
-    Serial.begin(9600); 
-  }
-  // DEBUG dans loop : Serial.println(variable)
-
-  setupElement(LED_NUMBER, FIRST_LED, OUTPUT);
-  setupElement(LED_NUMBER, FIRST_BUTTON, INPUT_PULLUP);
+	pinMode(LED_EASY, OUTPUT);
+	pinMode(LED_MEDIUM, OUTPUT);
+	pinMode(LED_HARD, OUTPUT);
+	pinMode(BTN_DIFFICULTY, INPUT_PULLUP);
+	pinMode(BTN_GAME, INPUT_PULLUP);
 }
 
 void loop()
 {
-  static enum state {
-    SHOW_NOTES, 
-    WAITING_INPUT,
-    WRONG_ORDER,
-    BUTTON_1_PRESSED,
-    BUTTON_2_PRESSED,
-    BUTTON_3_PRESSED,
-    WIN
-  } state_var = SHOW_NOTES;
-  int notes[] = {2,3,2,3,2,3,2,3}; // TODO First dummy order, then need to randomize it.  
-
-  switch (state_var) {
-    case SHOW_NOTES:
-      state_var = WAITING_INPUT;
-      // TODO Show notes in order & buzzer
-      showNotes(notes);
-      break;
-     case WRONG_ORDER:
-        // Afficher toutes les leds à 1 pendant 5s
-      break;
-     case WIN:
-        // Afficher toutes les leds pendant 10s
-       break;
-     case WAITING_INPUT:
-       break;
-     case BUTTON_1_PRESSED:
-      // TODO Gérer le bouton 1 dans une fonction générique
-      break;
-     case BUTTON_2_PRESSED: 
-       // TODO Gérer le bouton 2 dans une fonction générique
-      break;
-     case BUTTON_3_PRESSED:
-      // TODO Gérer le bouton 3 dans une fonction générique
-      break;
-  }
-
-  // TODO Si bouton 1, 2  ou 3 pressé et que state_var != SHOW_NOTE, WIN, WRONG_ORDER, set state_var à BUTTON_N_PRESSED 
+	switch (game) {
+		case configure:
+			switch (difficultyButton) {
+				case offPressed:
+					if (digitalRead(BTN_DIFFICULTY) == LOW) { difficultyButton = onPressed; }
+					break;
+					
+				case onPressed:
+					if (digitalRead(BTN_DIFFICULTY) == HIGH) { difficultyButton = changingDifficulty; }
+					break;
+					
+				case changingDifficulty:
+					switch (difficulty) {
+						case easy:
+							digitalWrite(LED_EASY, HIGH);
+							digitalWrite(LED_MEDIUM, HIGH);
+							digitalWrite(LED_HARD, LOW);
+							difficulty = medium;
+							break;
+						case medium:
+							digitalWrite(LED_EASY, HIGH);
+							digitalWrite(LED_MEDIUM, HIGH);
+							digitalWrite(LED_HARD, HIGH);
+							difficulty = hard;
+							break;
+						case hard:
+							digitalWrite(LED_EASY, HIGH);
+							digitalWrite(LED_MEDIUM, LOW);
+							digitalWrite(LED_HARD, LOW);
+							difficulty = easy;
+							break;
+					}
+					difficultyButton = offPressed;
+					break;
+			}
+			if (digitalRead(BTN_GAME) == LOW) { game = calculate; }
+			break;
+			
+		case calculate:		
+			switch (difficulty) {
+				case easy:
+					length = LENGTH_EASY;
+					break;				
+				case medium:
+					length = LENGTH_MEDIUM;
+					break;					
+				case hard:
+					length = LENGTH_HARD;
+					break;
+			}			
+			
+			int static sequence[length];
+			
+			for (int i = 0; i < length; i++) {
+				sequence[i] = rand()%length;
+			}		
+			
+			if (digitalRead(BTN_GAME) == HIGH) { game = play; }
+			break;
+			
+		case play:
+			if (digitalRead(BTN_GAME) == LOW) {
+				while (true) {
+					if (digitalRead(BTN_GAME) == HIGH) {
+						game = configure;
+						break;
+					}
+				}
+			}
+			break;
+	}
 }
-
-
-void showNotes(int notes[]) {
-  for (int i = 0; i <= sizeof(notes); i++) {
-    if (DEBUG) {
-      Serial.println(notes[i]);
-    }
-    turnItOnAndOff(notes[i], 100);
-  }
-}
-
-void turnItOnAndOff(int element, int timer) {
-  digitalWrite(element, HIGH);
-  delay(timer);
-  digitalWrite(element, LOW);
-}
-
